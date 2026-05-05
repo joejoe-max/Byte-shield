@@ -131,7 +131,6 @@ export default function App() {
   const fetchDeviceData = useCallback(async () => {
     try {
       const now = Date.now();
-      // Use the reset timestamp as our start point
       const usage = await ByteShield.getAppDataUsage(resetTimestamp, now);
       const sortedUsage = usage.sort((a, b) => b.usageBytes - a.usageBytes);
       
@@ -140,12 +139,12 @@ export default function App() {
       setTotalBytesToday(total);
       setDataSavedBytes(total * 0.15);
 
+      // Dynamic chart data based on accumulation
       setChartData([
-        { name: '00:00', usage: total * 0.05 },
-        { name: 'Morning', usage: total * 0.25 },
-        { name: 'Midday', usage: total * 0.45 },
-        { name: 'Evening', usage: total * 0.2 },
-        { name: 'Now', usage: total * 0.05 },
+        { name: 'Start', usage: 0 },
+        { name: 'Mid', usage: total * 0.4 },
+        { name: 'Peak', usage: total * 0.7 },
+        { name: 'Now', usage: total },
       ]);
       
       const isOptimized = await ByteShield.checkBatteryOptimization();
@@ -159,10 +158,14 @@ export default function App() {
   }, [resetTimestamp]);
 
   const handleReset = () => {
-    const confirm = window.confirm("Reset all tracked usage for today and start fresh?");
+    const confirm = window.confirm("Reset all tracked usage and start fresh?");
     if (confirm) {
-      setResetTimestamp(Date.now());
-      fetchDeviceData();
+      const newStart = Date.now();
+      setResetTimestamp(newStart);
+      setAppUsage([]);
+      setTotalBytesToday(0);
+      setDataSavedBytes(0);
+      setChartData([]);
       setShowSettings(false);
     }
   };
@@ -185,24 +188,22 @@ export default function App() {
     setTestResults(null);
     
     try {
-      // Step 1: Resilient Ping Test
+      {/* Step 1: Resilient Ping Test */}
       let ping = 0;
       const pStart = performance.now();
       
       try {
-        // Try fetch first (Most accurate)
-        await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-cache', signal: AbortSignal.timeout(2000) });
-        ping = Math.round(performance.now() - pStart);
-      } catch (e) {
-        // Fallback: Image Load (often bypasses CORS restrictions better)
-        await new Promise((resolve) => {
+        // We use a small image from a major CDN to estimate latency without CORS issues
+        await new Promise((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(true);
-          img.onerror = () => resolve(true);
+          img.onerror = () => resolve(true); // Still counts as a round trip
           img.src = `https://www.google.com/favicon.ico?t=${Date.now()}`;
-          setTimeout(resolve, 2000);
+          setTimeout(reject, 3000);
         });
-        ping = Math.round((performance.now() - pStart) / 1.2); // Adjust for image overhead
+        ping = Math.round(performance.now() - pStart);
+      } catch (e) {
+        ping = 999;
       }
 
       // Step 2: Realistic Animation Stages

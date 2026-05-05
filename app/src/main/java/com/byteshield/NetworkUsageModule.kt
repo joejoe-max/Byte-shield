@@ -17,25 +17,40 @@ class NetworkUsageModule(private val context: Context) {
         val usageMap = mutableMapOf<String, Long>()
 
         try {
-            // Mobile Data
-            val mobileBucket = networkStatsManager.querySummaryForDevice(
-                ConnectivityManager.TYPE_MOBILE, 
-                null, 
-                startTime, 
-                endTime
+            // Mobile Data for specific UID
+            val mobileStats = networkStatsManager.queryDetailsForUid(
+                ConnectivityManager.TYPE_MOBILE,
+                null,
+                startTime,
+                endTime,
+                uid
             )
-            usageMap["mobile"] = mobileBucket.rxBytes + mobileBucket.txBytes
+            var mobileTotal = 0L
+            val bucket = android.app.usage.NetworkStats.Bucket()
+            while (mobileStats.hasNextBucket()) {
+                mobileStats.getNextBucket(bucket)
+                mobileTotal += bucket.rxBytes + bucket.txBytes
+            }
+            mobileStats.close()
+            usageMap["mobile"] = mobileTotal
 
-            // WiFi Data
-            val wifiBucket = networkStatsManager.querySummaryForDevice(
-                ConnectivityManager.TYPE_WIFI, 
-                null, 
-                startTime, 
-                endTime
+            // WiFi Data for specific UID
+            val wifiStats = networkStatsManager.queryDetailsForUid(
+                ConnectivityManager.TYPE_WIFI,
+                null,
+                startTime,
+                endTime,
+                uid
             )
-            usageMap["wifi"] = wifiBucket.rxBytes + wifiBucket.txBytes
+            var wifiTotal = 0L
+            while (wifiStats.hasNextBucket()) {
+                wifiStats.getNextBucket(bucket)
+                wifiTotal += bucket.rxBytes + bucket.txBytes
+            }
+            wifiStats.close()
+            usageMap["wifi"] = wifiTotal
 
-        } catch (e: RemoteException) {
+        } catch (e: Exception) {
             Log.e("NetworkUsageModule", "Error fetching usage for UID $uid", e)
         }
 
