@@ -54,6 +54,9 @@ const ByteShield = window.ByteShield || {
   stopVPN: () => console.log("VPN Stopped"),
   requestBatteryOptimizationExemption: () => alert("Directing to Android Battery Optimization settings..."),
   openUsageSettings: () => alert("Opening Android Usage Access settings..."),
+  runPing: (host) => Promise.resolve(Math.floor(Math.random() * 50) + 10),
+  runDownloadTest: (url) => Promise.resolve((Math.random() * 50 + 10).toFixed(1)),
+  runUploadTest: (url) => Promise.resolve((Math.random() * 20 + 2).toFixed(1)),
 };
 
 // Helper for tailwind classes
@@ -188,32 +191,44 @@ export default function App() {
     setTestResults(null);
     
     try {
-      {/* Step 1: Resilient Ping Test */}
+      // Step 1: Resilient Ping Test
       let ping = 0;
-      const pStart = performance.now();
-      
-      try {
-        // We use a small image from a major CDN to estimate latency without CORS issues
-        await new Promise((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(true); // Still counts as a round trip
-          img.src = `https://www.google.com/favicon.ico?t=${Date.now()}`;
-          setTimeout(reject, 3000);
-        });
-        ping = Math.round(performance.now() - pStart);
-      } catch (e) {
-        ping = 999;
+      if (IS_ANDROID && ByteShield.runPing) {
+        ping = await ByteShield.runPing("8.8.8.8");
+      } else {
+        const pStart = performance.now();
+        try {
+          // We use a small image from a major CDN to estimate latency without CORS issues
+          await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(true); 
+            img.src = `https://www.google.com/favicon.ico?t=${Date.now()}`;
+            setTimeout(reject, 3000);
+          });
+          ping = Math.round(performance.now() - pStart);
+        } catch (e) {
+          ping = 999;
+        }
       }
 
-      // Step 2: Realistic Animation Stages
-      for(let i=0; i<6; i++) {
-        await new Promise(r => setTimeout(r, 250));
+      // Step 2: Download Projection
+      let download = "0.0";
+      if (IS_ANDROID && ByteShield.runDownloadTest) {
+        download = await ByteShield.runDownloadTest("https://dl.google.com/android/repository/platform-tools-latest-windows.zip");
+      } else {
+        await new Promise(r => setTimeout(r, 1500));
+        download = (Math.random() * 45 + 15).toFixed(1);
       }
-      const download = (Math.random() * 45 + 15).toFixed(1);
       
-      await new Promise(r => setTimeout(r, 500));
-      const upload = (Math.random() * 15 + 2).toFixed(1);
+      // Step 3: Upload Projection
+      let upload = "0.0";
+      if (IS_ANDROID && ByteShield.runUploadTest) {
+        upload = await ByteShield.runUploadTest("https://httpbin.org/post");
+      } else {
+        await new Promise(r => setTimeout(r, 800));
+        upload = (Math.random() * 15 + 2).toFixed(1);
+      }
 
       let quality = "Average";
       const dl = parseFloat(download);
