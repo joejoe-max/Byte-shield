@@ -1,0 +1,6 @@
+{
+  "name": "Byte Shield",
+  "description": "An offline-first Android network control and monitoring app with VPN-based traffic logging, per-app data usage tracking, and network speed testing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
