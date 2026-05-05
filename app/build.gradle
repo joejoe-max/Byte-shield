@@ -32,12 +32,22 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
+    packaging {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
-    // Note: react-android is needed for Native Modules, assuming CI has access to the repo
-    implementation 'com.facebook.react:react-android'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    
+    // Explicitly versioned react-android
+    implementation 'com.facebook.react:react-android:0.73.4'
+    implementation 'com.facebook.react:hermes-android:0.73.4'
+    implementation 'com.facebook.soloader:soloader:0.10.5'
 }

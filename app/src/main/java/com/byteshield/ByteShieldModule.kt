@@ -86,4 +86,22 @@ class ByteShieldModule(reactContext: ReactApplicationContext) : ReactContextBase
         intent.action = "STOP"
         reactContext.startService(intent)
     }
+
+    @ReactMethod
+    fun runPing(host: String, promise: Promise) {
+        val speedModule = SpeedTestModule()
+        promise.resolve(speedModule.runPing(host))
+    }
+
+    @ReactMethod
+    fun runDownloadTest(url: String, promise: Promise) {
+        val speedModule = SpeedTestModule()
+        promise.resolve(speedModule.runDownloadTest(url).toString())
+    }
+
+    @ReactMethod
+    fun runUploadTest(url: String, promise: Promise) {
+        val speedModule = SpeedTestModule()
+        promise.resolve(speedModule.runUploadTest(url).toString())
+    }
 }
