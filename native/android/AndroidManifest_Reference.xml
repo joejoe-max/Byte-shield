@@ -1,0 +1,25 @@
+<!-- Add these to your AndroidManifest.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.byteshield">
+
+    <!-- Network monitoring permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    
+    <!-- VPN & Battery permissions -->
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <application ...>
+        <service android:name=".ByteShieldVpnService"
+                 android:permission="android.permission.BIND_VPN_SERVICE"
+                 android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>
