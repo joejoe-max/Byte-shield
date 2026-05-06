@@ -4,6 +4,9 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableArray
+import com.facebook.react.bridge.WritableMap
 import android.content.Intent
 import android.provider.Settings
 import android.app.AppOpsManager
@@ -51,10 +54,10 @@ class ByteShieldModule(reactContext: ReactApplicationContext) : ReactContextBase
         val usageModule = NetworkUsageModule(reactContext)
         try {
             val usageList = usageModule.getAllAppsUsage(startTime.toLong(), endTime.toLong())
-            val results = com.facebook.react.bridge.Arguments.createArray()
+            val results = Arguments.createArray()
             
             for (info in usageList) {
-                val map = com.facebook.react.bridge.Arguments.createMap()
+                val map = Arguments.createMap()
                 map.putInt("uid", info["uid"] as Int)
                 map.putString("name", info["name"] as String)
                 map.putString("packageName", info["packageName"] as String)
@@ -80,10 +83,10 @@ class ByteShieldModule(reactContext: ReactApplicationContext) : ReactContextBase
 
     @ReactMethod
     fun getSecurityAlerts(promise: Promise) {
-        val results = com.facebook.react.bridge.Arguments.createArray()
+        val results = Arguments.createArray()
         synchronized(ByteShieldVpnService.alertHistory) {
             for (alert in ByteShieldVpnService.alertHistory) {
-                val map = com.facebook.react.bridge.Arguments.createMap()
+                val map = Arguments.createMap()
                 map.putString("id", alert["id"] as String)
                 map.putString("title", alert["title"] as String)
                 map.putString("message", alert["message"] as String)

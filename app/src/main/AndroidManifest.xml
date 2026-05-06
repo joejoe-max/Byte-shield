@@ -9,15 +9,15 @@
     <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher"
         android:label="Byte Shield"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.NoActionBar">
 
@@ -37,10 +37,12 @@
         <service android:name=".ByteShieldVpnService"
                  android:permission="android.permission.BIND_VPN_SERVICE"
                  android:exported="false"
-                 android:foregroundServiceType="connectedDevice">
+                 android:foregroundServiceType="specialUse">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" 
+                      android:value="VPN and Security monitoring" />
         </service>
 
     </application>

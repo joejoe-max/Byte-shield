@@ -111,7 +111,7 @@ class ByteShieldVpnService : VpnService() {
         val now = System.currentTimeMillis()
         
         // Simulate logging to the UI if a callback is set
-        onDataLogged?.invoke(1000, 0, bytes) // Simulate system-level uid 1000 activity
+        onDataLogged?.invoke(1000, 0L, bytes) // Simulate system-level uid 1000 activity
         
         // Every 10 seconds check for spikes or simulate anomalies
         if (now - lastUsageCheckTime > 10000) {
