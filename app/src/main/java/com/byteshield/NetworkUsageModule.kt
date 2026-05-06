@@ -3,6 +3,8 @@ package com.byteshield
 import android.app.usage.NetworkStats
 import android.app.usage.NetworkStatsManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.net.ConnectivityManager
 import android.util.Log
 

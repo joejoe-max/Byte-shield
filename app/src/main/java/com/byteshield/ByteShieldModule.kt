@@ -13,7 +13,7 @@ import android.app.AppOpsManager
 import android.os.Process
 import android.content.Context
 
-class ByteShieldModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+class ByteShieldModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String = "ByteShield"
 

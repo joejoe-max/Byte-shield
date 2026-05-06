@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "android:bundle": "mkdir -p app/src/main/assets && npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output app/src/main/assets/index.android.bundle --assets-dest app/src/main/res/"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -18,10 +19,13 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
+    "lucide-react-native": "^1.14.0",
     "motion": "^12.23.24",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-native": "0.73.4",
+    "react-native-reanimated": "^4.3.0",
+    "react-native-svg": "^15.15.4",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
     "vite": "^6.2.3"
