@@ -101,6 +101,19 @@ Please set the JAVA_HOME variable in your environment to match the
 location of your Java installation."
 fi
 
+# Attempt to download the JAR if missing
+if [ ! -e "$CLASSPATH" ]; then
+    mkdir -p "`dirname \"$CLASSPATH\"`"
+    echo "Downloading gradle-wrapper.jar..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -L -o "$CLASSPATH" https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar
+    elif command -v wget >/dev/null 2>&1; then
+        wget -O "$CLASSPATH" https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar
+    else
+        echo "Error: curl or wget not found. Cannot download gradle-wrapper.jar."
+    fi
+fi
+
 # Store the command line arguments in an array
 SAVE_IFS=$IFS
 IFS='
