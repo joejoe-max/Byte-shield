@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Byte Shield
 
-# Run and deploy your AI Studio app
+Byte Shield is an offline-first Android network control and monitoring application. It provides advanced features for users to manage their device's network traffic securely and efficiently.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/044d27a3-d9c2-400a-8c2e-2456ec3b667b
+- **VPN-Based Traffic Logging**: Securely log and monitor all incoming and outgoing network traffic.
+- **Per-App Data Usage Tracking**: Monitor data consumption for each individual application on your device.
+- **Network Speed Testing**: Built-in tools to test your current network performance.
+- **Offline-First**: Designed to work reliably without a persistent internet connection.
+- **Modern UI**: Polished interface built with React Native and Tailwind CSS.
 
-## Run Locally
+## Getting Started
 
-**Prerequisites:**  Node.js
+### Prerequisites
 
+- Node.js (v18+)
+- Android Studio & SDK (for Android builds)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Installation
+
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+
+### Running the App
+
+- **Web Development**:
+  ```bash
+  npm run dev
+  ```
+- **Android Bundle**:
+  ```bash
+  npm run android:bundle
+  ```
+
+## Tech Stack
+
+- **Frontend**: React Native / React
+- **Styling**: Tailwind CSS / NativeWind
+- **Animations**: Reanimated (Native) / Framer Motion (Web)
+- **Icons**: Lucide React / Lucide React Native
