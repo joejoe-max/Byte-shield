@@ -13,7 +13,11 @@ export default defineConfig(({mode}) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'react-native': path.resolve(__dirname, './src/lib/react-native-mock.js'),
       },
+    },
+    optimizeDeps: {
+      exclude: ['react-native'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

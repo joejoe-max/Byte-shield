@@ -49,24 +49,46 @@ class ByteShieldModule(reactContext: ReactApplicationContext) : ReactContextBase
     @ReactMethod
     fun getAppDataUsage(startTime: Double, endTime: Double, promise: Promise) {
         val usageModule = NetworkUsageModule(reactContext)
-        // In a real bridge, we'd iterate through all installed apps.
-        // For this prototype, we'll return a simulated comprehensive list 
-        // that calling the real NetworkStatsManager would produce.
-        val results = com.facebook.react.bridge.Arguments.createArray()
-        
-        val pm = reactContext.packageManager
-        val packages = pm.getInstalledApplications(android.content.pm.PackageManager.GET_META_DATA)
-        
-        for (app in packages) {
-            val usage = usageModule.getAppDataUsage(app.uid, startTime.toLong(), endTime.toLong())
-            val total = (usage["mobile"] ?: 0L) + (usage["wifi"] ?: 0L)
+        try {
+            val usageList = usageModule.getAllAppsUsage(startTime.toLong(), endTime.toLong())
+            val results = com.facebook.react.bridge.Arguments.createArray()
             
-            if (total > 0) {
+            for (info in usageList) {
                 val map = com.facebook.react.bridge.Arguments.createMap()
-                map.putString("name", pm.getApplicationLabel(app).toString())
-                map.putDouble("usageBytes", total.toDouble())
-                map.putInt("uid", app.uid)
-                map.putString("packageName", app.packageName)
+                map.putInt("uid", info["uid"] as Int)
+                map.putString("name", info["name"] as String)
+                map.putString("packageName", info["packageName"] as String)
+                map.putDouble("usageBytes", (info["usageBytes"] as Long).toDouble())
+                map.putDouble("mobileBytes", (info["mobileBytes"] as Long).toDouble())
+                map.putDouble("wifiBytes", (info["wifiBytes"] as Long).toDouble())
+                map.putDouble("mobileRx", (info["mobileRx"] as Long).toDouble())
+                map.putDouble("mobileTx", (info["mobileTx"] as Long).toDouble())
+                map.putDouble("wifiRx", (info["wifiRx"] as Long).toDouble())
+                map.putDouble("wifiTx", (info["wifiTx"] as Long).toDouble())
+                results.pushMap(map)
+            }
+            promise.resolve(results)
+        } catch (e: Exception) {
+            promise.reject("USAGE_ERROR", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun isVPNActive(promise: Promise) {
+        promise.resolve(ByteShieldVpnService.isServiceRunning.get())
+    }
+
+    @ReactMethod
+    fun getSecurityAlerts(promise: Promise) {
+        val results = com.facebook.react.bridge.Arguments.createArray()
+        synchronized(ByteShieldVpnService.alertHistory) {
+            for (alert in ByteShieldVpnService.alertHistory) {
+                val map = com.facebook.react.bridge.Arguments.createMap()
+                map.putString("id", alert["id"] as String)
+                map.putString("title", alert["title"] as String)
+                map.putString("message", alert["message"] as String)
+                map.putDouble("timestamp", (alert["timestamp"] as Long).toDouble())
+                map.putString("type", alert["type"] as String)
                 results.pushMap(map)
             }
         }

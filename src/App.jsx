@@ -11,6 +11,7 @@ import {
   Settings, 
   Wifi, 
   Zap, 
+  ShieldAlert,
   ArrowDownUp, 
   CheckCircle2,
   AlertCircle,
@@ -32,10 +33,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-// Simulation of NativeModules for the browser preview
-const IS_ANDROID = typeof window !== 'undefined' && window.ByteShieldNative;
+import { NativeModules, Platform } from 'react-native';
 
-const ByteShield = window.ByteShield || {
+// Use NativeModules on Android, simulate on other platforms
+const NativeByteShield = NativeModules.ByteShield;
+const IS_ANDROID = Platform.OS === 'android';
+
+const ByteShield = NativeByteShield || {
   checkUsagePermission: () => Promise.resolve(true),
   checkBatteryOptimization: () => Promise.resolve(false),
   getAppDataUsage: (start, end) => {
@@ -44,16 +48,69 @@ const ByteShield = window.ByteShield || {
     const baseRate = 1024 * 1024; // 1MB per minute average
     
     return Promise.resolve([
-      { name: 'System Services', usageBytes: Math.floor(baseRate * durationMinutes * 0.1), color: '#71717A', icon: Settings },
-      { name: 'Browser', usageBytes: Math.floor(baseRate * durationMinutes * 0.4), color: '#4285F4', icon: Globe },
-      { name: 'Media Streamer', usageBytes: Math.floor(baseRate * durationMinutes * 1.5 * (1 + Math.random() * 0.2)), color: '#FF0000', icon: Play },
-      { name: 'Messaging', usageBytes: Math.floor(baseRate * durationMinutes * 0.05), color: '#25D366', icon: MessageCircle },
+      { 
+        uid: 1000,
+        packageName: 'android',
+        name: 'System Services', 
+        usageBytes: Math.floor(baseRate * durationMinutes * 0.1), 
+        mobileBytes: Math.floor(baseRate * durationMinutes * 0.05), 
+        wifiBytes: Math.floor(baseRate * durationMinutes * 0.05),
+        mobileRx: Math.floor(baseRate * durationMinutes * 0.03),
+        mobileTx: Math.floor(baseRate * durationMinutes * 0.02),
+        wifiRx: Math.floor(baseRate * durationMinutes * 0.03),
+        wifiTx: Math.floor(baseRate * durationMinutes * 0.02),
+        color: '#71717A', 
+        icon: Settings 
+      },
+      { 
+        uid: 10001,
+        packageName: 'com.android.chrome',
+        name: 'Browser', 
+        usageBytes: Math.floor(baseRate * durationMinutes * 0.4), 
+        mobileBytes: Math.floor(baseRate * durationMinutes * 0.2), 
+        wifiBytes: Math.floor(baseRate * durationMinutes * 0.2),
+        mobileRx: Math.floor(baseRate * durationMinutes * 0.15),
+        mobileTx: Math.floor(baseRate * durationMinutes * 0.05),
+        wifiRx: Math.floor(baseRate * durationMinutes * 0.15),
+        wifiTx: Math.floor(baseRate * durationMinutes * 0.05),
+        color: '#4285F4', 
+        icon: Globe 
+      },
+      { 
+        uid: 10002,
+        packageName: 'com.google.android.youtube',
+        name: 'Media Streamer', 
+        usageBytes: Math.floor(baseRate * durationMinutes * 1.5 * (1 + Math.random() * 0.2)), 
+        mobileBytes: Math.floor(baseRate * durationMinutes * 0.8), 
+        wifiBytes: Math.floor(baseRate * durationMinutes * 0.7),
+        mobileRx: Math.floor(baseRate * durationMinutes * 0.75),
+        mobileTx: Math.floor(baseRate * durationMinutes * 0.05),
+        wifiRx: Math.floor(baseRate * durationMinutes * 0.65),
+        wifiTx: Math.floor(baseRate * durationMinutes * 0.05),
+        color: '#FF0000', 
+        icon: Play 
+      },
+      { 
+        uid: 10003,
+        packageName: 'com.whatsapp',
+        name: 'Messaging', 
+        usageBytes: Math.floor(baseRate * durationMinutes * 0.05), 
+        mobileBytes: Math.floor(baseRate * durationMinutes * 0.01), 
+        wifiBytes: Math.floor(baseRate * durationMinutes * 0.04),
+        mobileRx: Math.floor(baseRate * durationMinutes * 0.005),
+        mobileTx: Math.floor(baseRate * durationMinutes * 0.005),
+        wifiRx: Math.floor(baseRate * durationMinutes * 0.02),
+        wifiTx: Math.floor(baseRate * durationMinutes * 0.02),
+        color: '#25D366', 
+        icon: MessageCircle 
+      },
     ]);
   },
   startVPN: () => console.log("VPN Started"),
   stopVPN: () => console.log("VPN Stopped"),
-  requestBatteryOptimizationExemption: () => alert("Directing to Android Battery Optimization settings..."),
-  openUsageSettings: () => alert("Opening Android Usage Access settings..."),
+  isVPNActive: () => Promise.resolve(false),
+  requestBatteryOptimizationExemption: () => console.log("Directing to Android Battery Optimization settings..."),
+  openUsageSettings: () => console.log("Opening Android Usage Access settings..."),
   runPing: (host) => Promise.resolve(Math.floor(Math.random() * 50) + 10),
   runDownloadTest: (url) => Promise.resolve((Math.random() * 50 + 10).toFixed(1)),
   runUploadTest: (url) => Promise.resolve((Math.random() * 20 + 2).toFixed(1)),
@@ -105,6 +162,7 @@ const ViewWrapper = ({ children, isActive }) => (
   <AnimatePresence mode="wait">
     {isActive && (
       <motion.div
+        key="view-wrapper-content"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -119,8 +177,11 @@ const ViewWrapper = ({ children, isActive }) => (
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedApp, setSelectedApp] = useState(null);
   const [isVpnOn, setIsVpnOn] = useState(false);
+  const [securityAlerts, setSecurityAlerts] = useState([]);
   const [speedTestActive, setSpeedTestActive] = useState(false);
+  const [testPhase, setTestPhase] = useState('idle'); // idle, ping, download, upload, complete
   const [testResults, setTestResults] = useState(null);
   const [appUsage, setAppUsage] = useState([]);
   const [totalBytesToday, setTotalBytesToday] = useState(0);
@@ -134,6 +195,17 @@ export default function App() {
   const fetchDeviceData = useCallback(async () => {
     try {
       const now = Date.now();
+      
+      if (IS_ANDROID && ByteShield.isVPNActive) {
+        const vpnActive = await ByteShield.isVPNActive();
+        setIsVpnOn(vpnActive);
+        
+        if (vpnActive && ByteShield.getSecurityAlerts) {
+          const alerts = await ByteShield.getSecurityAlerts();
+          setSecurityAlerts(alerts);
+        }
+      }
+
       const usage = await ByteShield.getAppDataUsage(resetTimestamp, now);
       const sortedUsage = usage.sort((a, b) => b.usageBytes - a.usageBytes);
       
@@ -188,6 +260,7 @@ export default function App() {
   const runRealSpeedTest = async () => {
     if (speedTestActive) return;
     setSpeedTestActive(true);
+    setTestPhase('ping');
     setTestResults(null);
     
     try {
@@ -198,7 +271,6 @@ export default function App() {
       } else {
         const pStart = performance.now();
         try {
-          // We use a small image from a major CDN to estimate latency without CORS issues
           await new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(true);
@@ -212,6 +284,7 @@ export default function App() {
         }
       }
 
+      setTestPhase('download');
       // Step 2: Download Projection
       let download = "0.0";
       if (IS_ANDROID && ByteShield.runDownloadTest) {
@@ -221,12 +294,13 @@ export default function App() {
         download = (Math.random() * 45 + 15).toFixed(1);
       }
       
+      setTestPhase('upload');
       // Step 3: Upload Projection
       let upload = "0.0";
       if (IS_ANDROID && ByteShield.runUploadTest) {
         upload = await ByteShield.runUploadTest("https://httpbin.org/post");
       } else {
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 1200));
         upload = (Math.random() * 15 + 2).toFixed(1);
       }
 
@@ -237,8 +311,10 @@ export default function App() {
       else if (dl < 5 || ping > 250) quality = "Poor";
 
       setTestResults({ download, upload, ping: ping.toString(), quality });
+      setTestPhase('complete');
     } catch (e) {
       setTestResults({ download: "0.0", upload: "0.0", ping: "ERR", quality: "Offline" });
+      setTestPhase('complete');
     } finally {
       setSpeedTestActive(false);
     }
@@ -416,6 +492,54 @@ export default function App() {
                 />
               </div>
 
+              {/* Security Alerts Section */}
+              {isVpnOn && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <h3 className="text-white font-bold text-lg tracking-tight">Security Alerts</h3>
+                      <p className="text-xs text-zinc-500 font-mono tracking-wider">Real-time threat interception</p>
+                    </div>
+                    {securityAlerts.length > 0 && (
+                      <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full font-bold border border-rose-500/20">
+                        {securityAlerts.length} LOGGED
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {securityAlerts.length === 0 ? (
+                      <div className="bg-zinc-900/30 border border-zinc-900 p-6 rounded-2xl flex flex-col items-center text-center">
+                        <ShieldAlert size={32} className="text-zinc-800 mb-2" />
+                        <p className="text-xs text-zinc-600 font-medium">No threats identified in the current session. Monitoring continues...</p>
+                      </div>
+                    ) : (
+                      securityAlerts.slice(0, 3).map((alert, i) => (
+                        <motion.div 
+                          key={alert.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-zinc-900/40 border border-zinc-800/50 p-4 rounded-2xl flex gap-4 items-start"
+                        >
+                          <div className="mt-1">
+                            <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center">
+                              <AlertCircle size={16} className="text-rose-500" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h5 className="text-sm font-bold text-white tracking-tight leading-none">{alert.title}</h5>
+                              <span className="text-[9px] text-zinc-600 font-mono">{new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="text-xs text-zinc-400 leading-relaxed">{alert.message}</p>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Usage Chart */}
               <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
                 <div className="flex justify-between items-center mb-6">
@@ -490,16 +614,28 @@ export default function App() {
                   </div>
                 ) : appUsage.map((app, i) => {
                   const percentage = (app.usageBytes / totalBytesToday) * 100;
+                  const appKey = app.uid !== undefined ? app.uid.toString() : (app.packageName || app.name);
+                  const isSelected = selectedApp === appKey;
+                  
                   return (
                     <motion.div 
-                      key={app.uid || app.name}
+                      key={appKey}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="group bg-zinc-900/30 hover:bg-zinc-900/80 border border-zinc-900 hover:border-zinc-700 p-4 rounded-2xl transition-all cursor-pointer"
+                      onClick={() => setSelectedApp(isSelected ? null : appKey)}
+                      className={cn(
+                        "group border transition-all duration-300 cursor-pointer overflow-hidden",
+                        isSelected 
+                          ? "bg-zinc-900 border-amber-500/30 rounded-3xl p-6" 
+                          : "bg-zinc-900/30 hover:bg-zinc-900/80 border-zinc-900 hover:border-zinc-700 p-4 rounded-2xl"
+                      )}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-700">
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden border transition-transform duration-500",
+                          isSelected ? "scale-110 border-amber-500/50" : "bg-zinc-800 border-zinc-700"
+                        )}>
                           {app.icon ? <app.icon size={24} style={{ color: app.color || '#52525b' }} /> : <Package size={24} className="text-zinc-500" />}
                         </div>
                         <div className="flex-1">
@@ -507,17 +643,90 @@ export default function App() {
                             <h4 className="font-bold text-white text-sm tracking-tight truncate max-w-[120px]">{app.name}</h4>
                             <span className="text-xs font-mono font-bold text-zinc-400">{formatBytes(app.usageBytes)}</span>
                           </div>
-                          <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percentage}%` }}
-                              transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                              className="h-full rounded-full bg-amber-500"
-                            />
-                          </div>
+                          {!isSelected && (
+                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                              <motion.div 
+                                key={`progress-${appKey}`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                                className="h-full rounded-full bg-amber-500"
+                              />
+                            </div>
+                          )}
                         </div>
-                        <ChevronRight size={14} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
+                        <ChevronRight 
+                          size={14} 
+                          className={cn(
+                            "text-zinc-700 transition-all duration-300",
+                            isSelected ? "rotate-90 text-amber-500" : "group-hover:text-zinc-400"
+                          )} 
+                        />
                       </div>
+
+                      <AnimatePresence>
+                        {isSelected && (
+                          <motion.div
+                            key={`details-${appKey}`}
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="mt-6 space-y-6 pt-6 border-t border-zinc-800"
+                          >
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Mobile Breakdown */}
+                              <div className="space-y-3 p-4 bg-zinc-950 rounded-2xl border border-zinc-800/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Activity size={14} className="text-amber-500" />
+                                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mobile Network</span>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-mono">
+                                    <span className="text-zinc-500">Received (Rx)</span>
+                                    <span className="text-zinc-300">{formatBytes(app.mobileRx || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[11px] font-mono">
+                                    <span className="text-zinc-500">Transmitted (Tx)</span>
+                                    <span className="text-zinc-300">{formatBytes(app.mobileTx || 0)}</span>
+                                  </div>
+                                  <div className="pt-2 border-t border-zinc-800 flex justify-between items-center text-xs font-bold">
+                                    <span className="text-zinc-400">Total Mobile</span>
+                                    <span className="text-amber-500">{formatBytes(app.mobileBytes || 0)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Wi-Fi Breakdown */}
+                              <div className="space-y-3 p-4 bg-zinc-950 rounded-2xl border border-zinc-800/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Wifi size={14} className="text-blue-500" />
+                                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Wi-Fi Network</span>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-mono">
+                                    <span className="text-zinc-500">Received (Rx)</span>
+                                    <span className="text-zinc-300">{formatBytes(app.wifiRx || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[11px] font-mono">
+                                    <span className="text-zinc-500">Transmitted (Tx)</span>
+                                    <span className="text-zinc-300">{formatBytes(app.wifiTx || 0)}</span>
+                                  </div>
+                                  <div className="pt-2 border-t border-zinc-800 flex justify-between items-center text-xs font-bold">
+                                    <span className="text-zinc-400">Total Wi-Fi</span>
+                                    <span className="text-blue-500">{formatBytes(app.wifiBytes || 0)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-zinc-800/20 rounded-2xl">
+                              <p className="text-[10px] text-zinc-500 font-mono italic leading-relaxed">
+                                Identified by UID <span className="text-zinc-400">{app.uid}</span>. Packaged as: <span className="text-zinc-400 break-all">{app.packageName || "N/A"}</span>
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   );
                 })}
@@ -532,85 +741,165 @@ export default function App() {
                 <p className="text-xs text-zinc-500 font-mono italic">Bandwidth profiling (Offline fallback: simulated)</p>
               </div>
 
-              <div className="flex-1 flex flex-col items-center justify-center py-8 relative">
-                <div className="w-56 h-56 rounded-full border-[8px] border-zinc-900 flex flex-col items-center justify-center relative overflow-hidden">
+              {/* Progress Indicators */}
+              <div className="flex justify-between items-center px-4">
+                {['Ping', 'Download', 'Upload'].map((phase, idx) => {
+                  const phaseLower = phase.toLowerCase();
+                  const isPast = (phaseLower === 'ping' && (testPhase === 'download' || testPhase === 'upload' || testPhase === 'complete')) ||
+                                 (phaseLower === 'download' && (testPhase === 'upload' || testPhase === 'complete')) ||
+                                 (phaseLower === 'upload' && testPhase === 'complete');
+                  const isCurrent = testPhase === phaseLower;
+                  
+                  return (
+                    <div key={phase} className="flex flex-col items-center gap-2">
+                      <div className={cn(
+                        "w-2 h-2 rounded-full transition-all duration-300",
+                        isPast ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
+                        isCurrent ? "bg-amber-500 animate-pulse scale-125 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : 
+                        "bg-zinc-800"
+                      )} />
+                      <span className={cn(
+                        "text-[10px] font-mono uppercase tracking-widest",
+                        isPast ? "text-emerald-500" : isCurrent ? "text-amber-500 font-bold" : "text-zinc-600"
+                      )}>
+                        {phase}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex-1 flex flex-col items-center justify-center py-4 relative">
+                <div className={cn(
+                  "w-64 h-64 rounded-full border-[8px] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-500",
+                  speedTestActive ? "border-amber-500/20" : testResults ? "border-zinc-800" : "border-zinc-900"
+                )}>
                   <div className="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-transparent" />
+                  
                   {speedTestActive ? (
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-mono text-zinc-500 uppercase animate-pulse">Scanning...</span>
+                    <div className="flex flex-col items-center text-center px-4">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">
+                        Phase: {testPhase}
+                      </span>
                       <motion.span 
                         key="active-num"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-5xl font-black text-amber-500 font-mono"
+                        className="text-6xl font-black text-amber-500 font-mono"
                       >
                         {Math.floor(Math.random() * 100)}
                       </motion.span>
-                      <span className="text-xs text-zinc-400 font-mono font-bold mt-1">Mbps</span>
+                      <span className="text-xs text-zinc-400 font-mono font-bold mt-1">Measuring...</span>
                     </div>
                   ) : testResults ? (
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-mono text-zinc-500 uppercase">Download</span>
-                      <span className="text-5xl font-black text-white font-mono">{testResults.download}</span>
-                      <span className="text-xs text-zinc-400 font-mono font-bold mt-1">Mbps</span>
-                    </div>
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center text-center"
+                    >
+                      <ArrowDownUp className="text-amber-500 mb-2 opacity-50" size={32} />
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Download Peak</span>
+                      <span className="text-6xl font-black text-white font-mono leading-none my-1">{testResults.download}</span>
+                      <span className="text-xs text-zinc-400 font-mono font-bold">Mbps</span>
+                    </motion.div>
                   ) : (
                     <div className="flex flex-col items-center">
-                      <Wifi size={40} className="text-zinc-800 mb-2" />
-                      <span className="text-[10px] font-mono text-zinc-600 uppercase">Ready</span>
+                      <Wifi size={48} className="text-zinc-800 mb-3" />
+                      <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">System Ready</span>
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-8 mt-12 w-full">
-                  <div className="text-center">
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono mb-1">Upload</p>
-                    <p className="text-xl font-bold text-white font-mono">{testResults?.upload || "--"} <span className="text-[10px] text-zinc-600">Mbps</span></p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono mb-1">Ping</p>
-                    <p className="text-xl font-bold text-white font-mono">{testResults?.ping || "--"} <span className="text-[10px] text-zinc-600">ms</span></p>
-                  </div>
+                <div className="grid grid-cols-2 gap-12 mt-10 w-full px-8">
+                  <motion.div 
+                    animate={testPhase === 'upload' ? { scale: 1.1 } : { scale: 1 }}
+                    className="text-center"
+                  >
+                    <p className={cn(
+                      "text-[10px] uppercase tracking-widest font-mono mb-1 transition-colors",
+                      testPhase === 'upload' ? "text-amber-500" : "text-zinc-500"
+                    )}>Upload</p>
+                    <p className={cn(
+                      "text-2xl font-bold font-mono",
+                      testResults ? "text-white" : "text-zinc-700"
+                    )}>
+                      {testResults?.upload || (testPhase === 'upload' ? Math.floor(Math.random() * 20) : "--")} 
+                      <span className="text-[10px] opacity-40 ml-1">Mbps</span>
+                    </p>
+                  </motion.div>
+                  <motion.div 
+                    animate={testPhase === 'ping' ? { scale: 1.1 } : { scale: 1 }}
+                    className="text-center"
+                  >
+                    <p className={cn(
+                      "text-[10px] uppercase tracking-widest font-mono mb-1 transition-colors",
+                      testPhase === 'ping' ? "text-amber-500" : "text-zinc-500"
+                    )}>Ping</p>
+                    <p className={cn(
+                      "text-2xl font-bold font-mono",
+                      testResults ? "text-white" : "text-zinc-700"
+                    )}>
+                      {testResults?.ping || (testPhase === 'ping' ? Math.floor(Math.random() * 40) : "--")} 
+                      <span className="text-[10px] opacity-40 ml-1">ms</span>
+                    </p>
+                  </motion.div>
                 </div>
               </div>
 
-              <div className="space-y-4 pb-4">
+              <div className="space-y-4 pb-4 mt-auto">
                 {testResults && (
-                  <div className={cn(
-                    "p-4 rounded-2xl flex items-center gap-3 border transition-all duration-500",
-                    testResults.quality === "Excellent" || testResults.quality === "Good" ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200" :
-                    testResults.quality === "Average" ? "bg-amber-500/10 border-amber-500/30 text-amber-200" :
-                    "bg-rose-500/10 border-rose-500/30 text-rose-200"
-                  )}>
-                    {testResults.quality === "Poor" ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-                    <div>
-                      <p className={cn(
-                        "text-[10px] uppercase font-bold tracking-wider",
-                        testResults.quality === "Excellent" || testResults.quality === "Good" ? "text-emerald-500" :
-                        testResults.quality === "Average" ? "text-amber-500" : "text-rose-500"
-                      )}>
-                        Connection Quality: {testResults.quality}
-                      </p>
-                      <p className="text-xs opacity-80">
-                        {testResults.quality === "Excellent" && "High-speed and extremely stable. Ideal for 4K streaming."}
-                        {testResults.quality === "Good" && "Stable connection. Suitable for work and video calls."}
-                        {testResults.quality === "Average" && "Moderate latency detected. May affect real-time gaming."}
-                        {testResults.quality === "Poor" && "Significant bottleneck detected. Connectivity may be intermittent."}
-                      </p>
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className={cn(
+                      "p-5 rounded-2xl flex flex-col gap-3 border transition-all duration-500 backdrop-blur-sm",
+                      testResults.quality === "Excellent" || testResults.quality === "Good" ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]" :
+                      testResults.quality === "Average" ? "bg-amber-500/5 border-amber-500/20 shadow-[0_0_30px_-10px_rgba(245,158,11,0.2)]" :
+                      "bg-rose-500/5 border-rose-500/20 shadow-[0_0_30px_-10px_rgba(239,68,68,0.2)]"
+                    )}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        {testResults.quality === "Poor" ? <AlertCircle size={18} className="text-rose-500" /> : <CheckCircle2 size={18} className="text-emerald-500" />}
+                        <p className={cn(
+                          "text-xs font-bold uppercase tracking-[0.1em]",
+                          testResults.quality === "Excellent" || testResults.quality === "Good" ? "text-emerald-500" :
+                          testResults.quality === "Average" ? "text-amber-500" : "text-rose-500"
+                        )}>
+                          Network Grade: {testResults.quality}
+                        </p>
+                      </div>
+                      <div className="text-[10px] font-mono text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded">
+                        v1.2 Secure
+                      </div>
                     </div>
-                  </div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                      {testResults.quality === "Excellent" && "Server response is instant. Zero jitter detected. Ready for high-fidelity 4K and cloud gaming."}
+                      {testResults.quality === "Good" && "Solid availability. Minimal latency overhead. Perfect for VPN-based working or streaming."}
+                      {testResults.quality === "Average" && "Moderate congestion detected. You may experience slight delay in real-time interactions."}
+                      {testResults.quality === "Poor" && "Heavy packet loss or high latency. Check router placement or contact ISP."}
+                    </p>
+                  </motion.div>
                 )}
                 
                 <button 
                   onClick={runRealSpeedTest}
                   disabled={speedTestActive}
                   className={cn(
-                    "w-full py-4 rounded-2xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95",
-                    speedTestActive ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-white text-black hover:bg-zinc-200"
+                    "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg",
+                    speedTestActive ? "bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-800" : 
+                    testResults ? "bg-white text-black hover:bg-zinc-200" : 
+                    "bg-amber-500 text-black hover:bg-amber-400"
                   )}
                 >
-                  <Zap size={18} />
-                  {speedTestActive ? "Test in progress" : "Initiate Test"}
+                  {speedTestActive ? (
+                    <Activity size={20} className="animate-spin" />
+                  ) : testResults ? (
+                    <ArrowDownUp size={20} />
+                  ) : (
+                    <Zap size={20} />
+                  )}
+                  {speedTestActive ? "Analyzing Network..." : testResults ? "Run Analysis Again" : "Start Speed Analysis"}
                 </button>
               </div>
             </div>

@@ -18,6 +18,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "react-native": [
+        "./src/lib/react-native-mock.js"
       ]
     },
     "allowImportingTsExtensions": true,
