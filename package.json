@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "android:bundle": "mkdir -p app/src/main/assets && npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output app/src/main/assets/index.android.bundle --assets-dest app/src/main/res/"
+    "android:bundle": "mkdir -p app/src/main/assets && npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output app/src/main/assets/index.android.bundle --assets-dest app/src/main/res/",
+    "android:apk": "npm run android:bundle && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

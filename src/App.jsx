@@ -251,10 +251,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, [fetchDeviceData]);
 
-  const toggleVpn = () => {
-    if (isVpnOn) ByteShield.stopVPN();
-    else ByteShield.startVPN();
-    setIsVpnOn(!isVpnOn);
+  const toggleVpn = async () => {
+    try {
+      if (isVpnOn) {
+        ByteShield.stopVPN();
+        setIsVpnOn(false);
+        return;
+      }
+
+      const started = await ByteShield.startVPN?.();
+      if (started !== false) {
+        setIsVpnOn(true);
+      }
+    } catch (error) {
+      console.error("Unable to toggle VPN:", error);
+    }
   };
 
   const runRealSpeedTest = async () => {
