@@ -1,19 +1,46 @@
 package com.byteshield
 
+import android.app.Activity
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.WritableArray
-import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.BaseActivityEventListener
 import android.content.Intent
 import android.provider.Settings
 import android.app.AppOpsManager
 import android.os.Process
 import android.content.Context
+import android.net.VpnService
+import androidx.core.content.ContextCompat
 
 class ByteShieldModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+
+    private var pendingVpnPromise: Promise? = null
+    private val vpnPermissionRequestCode = 4001
+
+    private val activityEventListener = object : BaseActivityEventListener() {
+        override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+            if (requestCode != vpnPermissionRequestCode) {
+                return
+            }
+
+            val promise = pendingVpnPromise
+            pendingVpnPromise = null
+
+            if (resultCode == Activity.RESULT_OK) {
+                startVpnService()
+                promise?.resolve(true)
+            } else {
+                promise?.reject("VPN_PERMISSION_DENIED", "VPN permission was not granted")
+            }
+        }
+    }
+
+    init {
+        reactContext.addActivityEventListener(activityEventListener)
+    }
 
     override fun getName(): String = "ByteShield"
 
@@ -99,17 +126,36 @@ class ByteShieldModule(private val reactContext: ReactApplicationContext) : Reac
     }
 
     @ReactMethod
-    fun startVPN() {
-        val intent = Intent(reactContext, ByteShieldVpnService::class.java)
-        intent.action = "START"
-        reactContext.startService(intent)
+    fun startVPN(promise: Promise) {
+        val prepareIntent = VpnService.prepare(reactContext)
+        if (prepareIntent == null) {
+            startVpnService()
+            promise.resolve(true)
+            return
+        }
+
+        val activity = currentActivity
+        if (activity == null) {
+            promise.reject("VPN_ACTIVITY_MISSING", "Unable to request VPN permission without an active screen")
+            return
+        }
+
+        pendingVpnPromise?.reject("VPN_REQUEST_REPLACED", "A new VPN permission request replaced the previous one")
+        pendingVpnPromise = promise
+
+        try {
+            activity.startActivityForResult(prepareIntent, vpnPermissionRequestCode)
+        } catch (e: Exception) {
+            pendingVpnPromise = null
+            promise.reject("VPN_REQUEST_FAILED", e.message, e)
+        }
     }
 
     @ReactMethod
     fun stopVPN() {
         val intent = Intent(reactContext, ByteShieldVpnService::class.java)
         intent.action = "STOP"
-        reactContext.startService(intent)
+        ContextCompat.startForegroundService(reactContext, intent)
     }
 
     @ReactMethod
@@ -128,5 +174,11 @@ class ByteShieldModule(private val reactContext: ReactApplicationContext) : Reac
     fun runUploadTest(url: String, promise: Promise) {
         val speedModule = SpeedTestModule()
         promise.resolve(speedModule.runUploadTest(url).toString())
+    }
+
+    private fun startVpnService() {
+        val intent = Intent(reactContext, ByteShieldVpnService::class.java)
+        intent.action = "START"
+        ContextCompat.startForegroundService(reactContext, intent)
     }
 }
